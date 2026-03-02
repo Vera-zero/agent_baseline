@@ -1,0 +1,61 @@
+﻿﻿# Core paths
+data:
+  corpus_path: "C:/Users/19924/Desktop/agent/timeqa_agent/timeqa_agent/data/timeqa/corpus/test.json"
+  question_arrow_path: "C:/Users/19924/Desktop/agent/timeqa_agent/timeqa_agent/data/timeqa/raw/test/data-00000-of-00001.arrow"
+
+# Model config (local or remote, choose one by provider)
+model:
+  provider: "vllm"        # local / remote / vllm
+
+  # ----- local provider (HuggingFace transformers) -----
+  # model_name: "Qwen/Qwen3-4B-Instruct-2507"
+  # device: "auto"           # auto / cpu / cuda
+  # torch_dtype: "auto"      # auto / float16 / bfloat16 / float32
+
+  # ----- vllm provider (local VLLM service) -----
+  model_name: "qwen3-32b"
+  base_url: "http://localhost:8000/v1"
+
+  # ----- remote provider (OpenAI-compatible Chat Completions) -----
+  model: "deepseek-chat"
+  # base_url: "https://api.deepseek.com/chat/completions"
+  api_key_env: "DEEPSEEK_API_KEY"
+
+  # common generation config
+  max_new_tokens: 256
+  temperature: 0.0
+  max_retries: 3
+  timeout: 180
+
+  # batch across questions for non-interactive strategies only
+  # interactive strategies (react/qaap) force batch_size=1 automatically
+  batch_size: 1
+
+# Retriever config (all configurable)
+retriever:
+  type: "contriever"       # currently supports contriever
+  model_name: "facebook/contriever"
+  top_k: 5
+
+# Chunk config (token based)
+chunk:
+  chunk_size: 1200
+  chunk_overlap: 100
+  min_chunk_size: 500
+
+# Runtime config
+run:
+  strategy: "zero_shot_cot"      # zero_shot / zero_shot_cot / rag_cot / react / qaap
+  max_questions: 100           # set <=0 for full set
+  resume: true
+  save_every: 1
+  seed: 42
+  load_strategy_config: true
+  strategy_config_dir: "./configs/methods"
+  strategy_params: {}          # will be overridden by configs/methods/<strategy>.yaml
+
+# Caches and outputs
+io:
+  cache_dir: "./cache"
+  output_dir: "./outputs"
+  run_name: "timeqa_baseline"
