@@ -31,9 +31,12 @@ class ModelConfig:
 
 @dataclass
 class RetrieverConfig:
-    type: str = "contriever"
+    type: str = "contriever"  # Options: "contriever", "bgem3"
     model_name: str = "facebook/contriever"
+    model_path: str = "/workspace/models/bge-m3"  # For bgem3 retriever
     top_k: int = 5
+    use_fp16: bool = False  # For bgem3 retriever
+    device: str = "auto"  # For bgem3 retriever
 
 
 @dataclass

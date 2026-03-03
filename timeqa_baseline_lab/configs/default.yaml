@@ -31,10 +31,19 @@ model:
   # interactive strategies (react/qaap) force batch_size=1 automatically
   batch_size: 4
 
-# Retriever config (all configurable)
+# Retriever config
 retriever:
-  type: "contriever"       # currently supports contriever
+  type: "bgem3"            # Options: "contriever" or "bgem3" (默认使用 bgem3)
+
+  # ----- for contriever -----
   model_name: "facebook/contriever"
+
+  # ----- for bgem3 -----
+  model_path: "/workspace/models/bge-m3"
+  device: "auto"           # auto / cpu / cuda (for bgem3)
+  use_fp16: false          # set true for GPU acceleration (for bgem3)
+
+  # common config
   top_k: 10
 
 # Chunk config (token based)

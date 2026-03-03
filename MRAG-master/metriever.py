@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--max-examples', type=int, default=None)
     parser.add_argument(
         '--stage1-model',
-        choices=['bm25', 'contriever','hybrid'], 
+        choices=['bm25', 'contriever', 'bgem3', 'hybrid'],
         default='contriever', #
         help='Choose a model for stage 1 retrival'
     )
@@ -50,6 +50,7 @@ def main():
     )
     parser.add_argument('--contriever-output', type=str, default="./TempRAGEval/contriever_output/TempRAGEval.json")
     parser.add_argument('--bm25-output', type=str, default="./TempRAGEval/BM25_output/TempRAGEval.json")
+    parser.add_argument('--bgem3-output', type=str, default="./TempRAGEval/BGEM3_output/TempRAGEval.json")
     parser.add_argument('--ctx-topk', type=int, default=100)
     parser.add_argument('--QFS-topk', type=int, default=5)
     parser.add_argument('--snt-topk', type=int, default=200)
@@ -125,6 +126,11 @@ def main():
     elif args.stage1_model == 'bm25':
         ctx_key = 'bm25_ctxs'
         path = args.bm25_output
+        with open(path, 'r', encoding="utf-8") as file:
+            examples = json.load(file)
+    elif args.stage1_model == 'bgem3':
+        ctx_key = 'ctxs'
+        path = args.bgem3_output
         with open(path, 'r', encoding="utf-8") as file:
             examples = json.load(file)
     else:

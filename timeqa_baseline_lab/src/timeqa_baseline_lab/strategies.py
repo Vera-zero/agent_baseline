@@ -1,12 +1,16 @@
 ﻿from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
+from typing import List, Union
 
 from .chunking import Chunk
 from .llm import BaseGenerator
 from .migrated import run_react
-from .retriever import ContrieverRetriever
+from .retriever import ContrieverRetriever, BGEM3Retriever
+
+
+# Type alias for retriever (supports both Contriever and BGEM3)
+Retriever = Union[ContrieverRetriever, BGEM3Retriever]
 
 
 SYSTEM_PROMPT = "You are a precise QA assistant. Always provide a final answer clearly."
@@ -49,14 +53,14 @@ def zero_shot_cot(llm: BaseGenerator, question: str) -> StrategyOutput:
     return StrategyOutput(answer=ans, retrieved=[], trace=[])
 
 
-def rag_cot(llm: BaseGenerator, retriever: ContrieverRetriever, question: str, top_k: int) -> StrategyOutput:
+def rag_cot(llm: BaseGenerator, retriever: Retriever, question: str, top_k: int) -> StrategyOutput:
     ctx = retriever.search(question, top_k=top_k)
     prompt = build_rag_cot_prompt(question, ctx)
     ans = llm.generate(prompt, system_prompt=SYSTEM_PROMPT)
     return StrategyOutput(answer=ans, retrieved=ctx, trace=[])
 
 
-def react(llm: BaseGenerator, retriever: ContrieverRetriever, question: str, top_k: int, max_steps: int = 6) -> StrategyOutput:
+def react(llm: BaseGenerator, retriever: Retriever, question: str, top_k: int, max_steps: int = 6) -> StrategyOutput:
     answer, retrieved, trace = run_react(
         llm=llm,
         retriever=retriever,

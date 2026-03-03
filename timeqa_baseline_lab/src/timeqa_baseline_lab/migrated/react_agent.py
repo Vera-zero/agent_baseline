@@ -3,11 +3,15 @@
 import json
 import re
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 from ..chunking import Chunk
 from ..llm import BaseGenerator
-from ..retriever import ContrieverRetriever
+from ..retriever import ContrieverRetriever, BGEM3Retriever
+
+
+# Type alias for retriever
+Retriever = Union[ContrieverRetriever, BGEM3Retriever]
 
 
 SYSTEM_PROMPT = "You are a careful reasoning agent that follows Action format exactly."
@@ -63,7 +67,7 @@ def _format_evidence(chunks: List[Chunk], top_k: int) -> str:
 
 def run_react(
     llm: BaseGenerator,
-    retriever: ContrieverRetriever,
+    retriever: Retriever,
     question: str,
     top_k: int,
     max_steps: int = 6,
