@@ -503,7 +503,7 @@ def call_pipeline(args, prompts, max_tokens=100, return_list=False, ver=False):
                             {"role": "system", "content": "You are a helpful assistant that answers questions concisely."},
                             {"role": "user", "content": prompt}
                         ],
-                        temperature=0.2,
+                        temperature=0.0,
                         max_tokens=max_tokens,
                         extra_body={"chat_template_kwargs": {"enable_thinking": False}},
                     )
@@ -567,7 +567,7 @@ def call_pipeline(args, prompts, max_tokens=100, return_list=False, ver=False):
 
 
     if args.reader == None:
-        sampling_params = SamplingParams(temperature=0.2, top_p=0.95, max_tokens=max_tokens, seed=0)
+        sampling_params = SamplingParams(temperature=0.0, top_p=0.95, max_tokens=max_tokens, seed=0)
         outputs = args.llm.generate(prompts, sampling_params)
         responses = [output.outputs[0].text for output in outputs]
         for stopper in ['</Keywords>', '</Summarization>', '</Answer>', '</Info>', '</Sentences>', '</Sentence>', '</Response>']:
@@ -584,7 +584,7 @@ def call_pipeline(args, prompts, max_tokens=100, return_list=False, ver=False):
         #     print(responses[0])
         #     import ipdb; ipdb.set_trace()
         # else:
-        sampling_params = SamplingParams(temperature=0.2, top_p=0.95, max_tokens=max_tokens, seed=0)
+        sampling_params = SamplingParams(temperature=0.0, top_p=0.95, max_tokens=max_tokens, seed=0)
         outputs = args.llm.generate(prompts, sampling_params)
         responses = [output.outputs[0].text for output in outputs]
         if ver:

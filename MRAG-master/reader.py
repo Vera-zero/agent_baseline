@@ -361,7 +361,7 @@ def main():
                 prompt = c_prompt(ex['question'], text)
                 prompts.append(prompt)
 
-            rag_preds = call_pipeline(args, prompts, 500)
+            rag_preds = call_pipeline(args, prompts, 4096)
 
             print(f'{tmp_key} top {args.ctx_topk} contexts prediction finished.')
             # import ipdb; ipdb.set_trace()
@@ -421,7 +421,7 @@ def main():
                     prompt = c_prompt(ex['question'], text)
                     prompts.append(prompt)
 
-                rag_preds = call_pipeline(args, prompts, 500)
+                rag_preds = call_pipeline(args, prompts, 4096)
                 print(f'{tmp_key} top {args.ctx_topk} contexts prediction finished.')
                 for k, ex in enumerate(examples):
                     question = ex['question']
@@ -492,7 +492,7 @@ def main():
                         print('parallel read no knowledge.')
                         text = '\n\n'.join([ctx['title'] + ' | ' + ctx['text'].strip() for ctx in ex[tmp_key][:args.ctx_topk]])
                         prompt = c_prompt(ex['question'], text)
-                        rag_pred = call_pipeline(args, [prompt], 500)[0]
+                        rag_pred = call_pipeline(args, [prompt], 4096)[0]
                         rag_pred = force_string(rag_pred)
                         if len(rag_pred.split())>50:
                             rag_pred=''

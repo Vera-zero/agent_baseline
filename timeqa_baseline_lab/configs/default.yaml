@@ -22,31 +22,31 @@ model:
   api_key_env: "DEEPSEEK_API_KEY"
 
   # common generation config
-  max_new_tokens: 256
+  max_new_tokens: 4096
   temperature: 0.0
   max_retries: 3
   timeout: 180
 
   # batch across questions for non-interactive strategies only
   # interactive strategies (react/qaap) force batch_size=1 automatically
-  batch_size: 1
+  batch_size: 4
 
 # Retriever config (all configurable)
 retriever:
   type: "contriever"       # currently supports contriever
   model_name: "facebook/contriever"
-  top_k: 5
+  top_k: 10
 
 # Chunk config (token based)
 chunk:
-  chunk_size: 1200
-  chunk_overlap: 100
-  min_chunk_size: 500
+  chunk_size: 200
+  chunk_overlap: 50
+  min_chunk_size: 50
 
 # Runtime config
 run:
   strategy: "zero_shot_cot"      # zero_shot / zero_shot_cot / rag_cot / react / qaap
-  max_questions: 100           # set <=0 for full set
+  max_questions: 0           # set <=0 for full set
   resume: true
   save_every: 1
   seed: 42
