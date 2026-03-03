@@ -1,10 +1,12 @@
 ﻿from __future__ import annotations
 
 import json
+import pickle
 from dataclasses import asdict
 from pathlib import Path
 from typing import List, Tuple
 
+import faiss
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -27,7 +29,7 @@ class ContrieverRetriever:
         self.model.eval()
 
         self.chunks: List[Chunk] = []
-        self.embeddings: torch.Tensor | None = None
+        self.index: faiss.Index | None = None
 
     def _resolve_device(self, device: str) -> str:
         if device == "auto":
@@ -52,9 +54,10 @@ class ContrieverRetriever:
         cache = Path(cache_dir)
         cache.mkdir(parents=True, exist_ok=True)
         chunks_path = cache / "chunks.jsonl"
-        emb_path = cache / "chunk_embeddings.pt"
+        index_path = cache / "index.faiss"
+        meta_path = cache / "index_meta.pkl"
 
-        if chunks_path.exists() and emb_path.exists():
+        if chunks_path.exists() and index_path.exists() and meta_path.exists():
             loaded_chunks = []
             with chunks_path.open("r", encoding="utf-8") as f:
                 for line in f:
@@ -63,17 +66,35 @@ class ContrieverRetriever:
                         continue
                     loaded_chunks.append(Chunk(**json.loads(line)))
             self.chunks = loaded_chunks
-            self.embeddings = torch.load(emb_path, map_location="cpu")
+
+            # Load FAISS index
+            self.index = faiss.read_index(str(index_path))
+            with open(meta_path, "rb") as f:
+                _ = pickle.load(f)  # metadata if needed
             return
 
         self.chunks = chunks
         texts = [c.text for c in chunks]
-        self.embeddings = self._embed_texts(texts)
+        embeddings = self._embed_texts(texts)
 
+        # Convert to numpy and normalize for cosine similarity
+        emb_np = embeddings.numpy().astype('float32')
+        faiss.normalize_L2(emb_np)
+
+        # Build FAISS index
+        dimension = emb_np.shape[1]
+        self.index = faiss.IndexFlatIP(dimension)
+        self.index.add(emb_np)
+
+        # Save chunks
         with chunks_path.open("w", encoding="utf-8") as f:
             for c in chunks:
                 f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
-        torch.save(self.embeddings, emb_path)
+
+        # Save FAISS index
+        faiss.write_index(self.index, str(index_path))
+        with open(meta_path, "wb") as f:
+            pickle.dump({}, f)  # Save empty metadata for compatibility
 
     @torch.no_grad()
     def search(self, query: str, top_k: int = 5) -> List[Chunk]:
@@ -81,14 +102,21 @@ class ContrieverRetriever:
 
     @torch.no_grad()
     def search_with_scores(self, query: str, top_k: int = 5) -> List[Tuple[Chunk, float]]:
-        if self.embeddings is None or not self.chunks:
+        if self.index is None or not self.chunks:
             return []
-        q = self._embed_texts([query])[0]
-        sim = torch.mv(self.embeddings, q)
-        k = min(top_k, sim.shape[0])
-        values, indices = torch.topk(sim, k=k)
-        idx_list = indices.cpu().numpy().tolist()
-        val_list = values.cpu().numpy().tolist()
+
+        # Embed and normalize query
+        q = self._embed_texts([query])
+        q_np = q.numpy().astype('float32')
+        faiss.normalize_L2(q_np)
+
+        # Search using FAISS
+        k = min(top_k, self.index.ntotal)
+        scores, indices = self.index.search(q_np, k)
+
+        # Return results
+        idx_list = indices[0].tolist()
+        val_list = scores[0].tolist()
         return [(self.chunks[i], float(v)) for i, v in zip(idx_list, val_list)]
 
 
@@ -124,7 +152,7 @@ class BGEM3Retriever:
         )
 
         self.chunks: List[Chunk] = []
-        self.embeddings: np.ndarray | None = None
+        self.index: faiss.Index | None = None
 
     def _resolve_device(self, device: str) -> str:
         if device == "auto":
@@ -150,9 +178,10 @@ class BGEM3Retriever:
         cache = Path(cache_dir)
         cache.mkdir(parents=True, exist_ok=True)
         chunks_path = cache / "chunks_bgem3.jsonl"
-        emb_path = cache / "chunk_embeddings_bgem3.npy"
+        index_path = cache / "index_bgem3.faiss"
+        meta_path = cache / "index_bgem3_meta.pkl"
 
-        if chunks_path.exists() and emb_path.exists():
+        if chunks_path.exists() and index_path.exists() and meta_path.exists():
             loaded_chunks = []
             with chunks_path.open("r", encoding="utf-8") as f:
                 for line in f:
@@ -161,17 +190,34 @@ class BGEM3Retriever:
                         continue
                     loaded_chunks.append(Chunk(**json.loads(line)))
             self.chunks = loaded_chunks
-            self.embeddings = np.load(emb_path)
+
+            # Load FAISS index
+            self.index = faiss.read_index(str(index_path))
+            with open(meta_path, "rb") as f:
+                _ = pickle.load(f)  # metadata if needed
             return
 
         self.chunks = chunks
         texts = [c.text for c in chunks]
-        self.embeddings = self._embed_texts(texts)
+        embeddings = self._embed_texts(texts)
 
+        # Normalize for cosine similarity
+        faiss.normalize_L2(embeddings)
+
+        # Build FAISS index
+        dimension = embeddings.shape[1]
+        self.index = faiss.IndexFlatIP(dimension)
+        self.index.add(embeddings)
+
+        # Save chunks
         with chunks_path.open("w", encoding="utf-8") as f:
             for c in chunks:
                 f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
-        np.save(emb_path, self.embeddings)
+
+        # Save FAISS index
+        faiss.write_index(self.index, str(index_path))
+        with open(meta_path, "wb") as f:
+            pickle.dump({}, f)  # Save empty metadata for compatibility
 
     def search(self, query: str, top_k: int = 5) -> List[Chunk]:
         """Search for top-k most similar chunks."""
@@ -179,26 +225,23 @@ class BGEM3Retriever:
 
     def search_with_scores(self, query: str, top_k: int = 5) -> List[Tuple[Chunk, float]]:
         """Search for top-k most similar chunks with scores."""
-        if self.embeddings is None or not self.chunks:
+        if self.index is None or not self.chunks:
             return []
 
         # Encode query
         query_result = self.model.encode([query], batch_size=1, max_length=512)
-        q_emb = query_result['dense_vecs'][0]
+        q_emb = query_result['dense_vecs'].astype('float32')
 
-        # Normalize embeddings for cosine similarity
-        q_norm = q_emb / np.linalg.norm(q_emb)
-        emb_norm = self.embeddings / np.linalg.norm(self.embeddings, axis=1, keepdims=True)
+        # Normalize
+        faiss.normalize_L2(q_emb)
 
-        # Compute similarities
-        similarities = np.dot(emb_norm, q_norm)
+        # Search using FAISS
+        k = min(top_k, self.index.ntotal)
+        scores, indices = self.index.search(q_emb, k)
 
-        # Get top-k
-        k = min(top_k, len(similarities))
-        top_indices = np.argsort(similarities)[-k:][::-1]
-
+        # Return results
         results = []
-        for idx in top_indices:
-            results.append((self.chunks[idx], float(similarities[idx])))
+        for idx, score in zip(indices[0], scores[0]):
+            results.append((self.chunks[idx], float(score)))
 
         return results
