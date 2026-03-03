@@ -72,7 +72,34 @@ def run_react(
     top_k: int,
     max_steps: int = 6,
 ) -> Tuple[str, List[Chunk], List[str]]:
-    """ReAct pipeline migrated from ReAct-master (Thought/Action/Observation loop)."""
+    """
+    ReAct pipeline migrated from ReAct-master (Thought/Action/Observation loop).
+
+    This implementation faithfully replicates the original ReAct algorithm from:
+    https://github.com/ysymyth/ReAct/blob/master/hotpotqa.ipynb
+
+    Key differences from original (data source only):
+    - Uses local retriever (Contriever/BGE-M3) instead of Wikipedia API
+    - Returns collected chunks and trace for evaluation purposes
+
+    Behavior alignment with original:
+    - No fallback mechanism: if max_steps reached without Finish[], returns empty answer
+    - Same Thought/Action/Observation loop structure
+    - Same Search/Lookup/Finish action semantics
+
+    Args:
+        llm: Language model generator
+        retriever: Document retriever (replaces Wikipedia API)
+        question: Question to answer
+        top_k: Number of documents to retrieve per search
+        max_steps: Maximum reasoning steps (default: 6, same as original)
+
+    Returns:
+        (answer, collected_chunks, trace):
+            - answer: Final answer string (empty if not finished)
+            - collected_chunks: Retrieved documents (for evaluation)
+            - trace: Execution trace (for debugging)
+    """
     instruction = (
         "Solve a question answering task with interleaving Thought, Action, Observation steps. "
         "Action can be: Search[entity], Lookup[keyword], Finish[answer]."
@@ -137,17 +164,14 @@ def run_react(
         if action_type == "Finish" and answer:
             break
 
+    # De-duplicate collected chunks by chunk_id
     dedup = {}
     for c in collected:
         dedup[c.chunk_id] = c
     collected = list(dedup.values())
 
-    if not answer:
-        final_prompt = (
-            f"Question: {question}\n"
-            f"Evidence:\n{_format_evidence(collected, top_k)}\n\n"
-            "Output only: Final Answer: <answer>"
-        )
-        answer = llm.generate(final_prompt, system_prompt=SYSTEM_PROMPT)
+    # IMPORTANT: No fallback mechanism (aligned with ReAct-master behavior)
+    # If the agent fails to call Finish[] within max_steps, answer remains empty
+    # This is the original ReAct behavior - failed reasoning = no answer
 
     return answer, collected[:top_k], trace
