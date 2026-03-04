@@ -1,7 +1,12 @@
-﻿﻿# Core paths
+﻿# Core paths
 data:
-  corpus_path: "C:/Users/19924/Desktop/agent/timeqa_agent/timeqa_agent/data/timeqa/corpus/test.json"
-  question_arrow_path: "C:/Users/19924/Desktop/agent/timeqa_agent/timeqa_agent/data/timeqa/raw/test/data-00000-of-00001.arrow"
+  # New unified format (recommended)
+  unified_data_path: "/workspace/ETE-Graph/dataset/timeqa/test_ffinal.json"
+  dataset_type: ""  # Leave empty for auto-detection, or specify 'timeqa' or 'tempreason'
+
+  # Legacy format (for backward compatibility, will be ignored if unified_data_path is set)
+  corpus_path: ""
+  question_arrow_path: ""
 
 # Model config (local or remote, choose one by provider)
 model:

@@ -1,0 +1,43 @@
+# Example configuration for TEMPREASON dataset
+# Copy this file to default.yaml or use with --config tempreason_example.yaml
+
+data:
+  # TEMPREASON unified format
+  unified_data_path: "/workspace/ETE-Graph/dataset/tempreason/test_ffinal.json"
+  dataset_type: "tempreason"  # Can also use "" for auto-detection
+
+model:
+  provider: "vllm"
+  model_name: "qwen3-32b"
+  base_url: "http://localhost:8000/v1"
+  max_new_tokens: 4096
+  temperature: 0.0
+  max_retries: 3
+  timeout: 180
+  batch_size: 4
+
+retriever:
+  type: "bgem3"
+  model_path: "/workspace/models/bge-m3"
+  device: "auto"
+  use_fp16: false
+  top_k: 10
+
+chunk:
+  chunk_size: 200
+  chunk_overlap: 50
+  min_chunk_size: 50
+
+run:
+  strategy: "zero_shot_cot"
+  max_questions: 0  # 0 = all questions
+  resume: true
+  save_every: 1
+  seed: 42
+  load_strategy_config: true
+  strategy_config_dir: "./configs/methods"
+
+io:
+  cache_dir: "./cache"
+  output_dir: "./outputs"
+  run_name: "tempreason_baseline"

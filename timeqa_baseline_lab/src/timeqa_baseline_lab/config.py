@@ -9,8 +9,13 @@ import yaml
 
 @dataclass
 class DataConfig:
-    corpus_path: str
-    question_arrow_path: str
+    # New unified format (test_ffinal.json)
+    unified_data_path: str = ""
+    dataset_type: str = ""  # 'timeqa' | 'tempreason' | '' (auto-detect)
+
+    # Legacy format (for backward compatibility)
+    corpus_path: str = ""
+    question_arrow_path: str = ""
 
 
 @dataclass
