@@ -117,8 +117,16 @@ def _build_experiment(cfg: Dict[str, Any]) -> ExperimentConfig:
             raise ValueError("model.model_name is required when model.provider=vllm")
         if not exp.model.base_url:
             raise ValueError("model.base_url is required when model.provider=vllm")
+    elif provider == "deepseek":
+        exp.model.provider = "deepseek"
+        if not exp.model.model:
+            raise ValueError("model.model is required when model.provider=deepseek")
+        if not exp.model.base_url:
+            raise ValueError("model.base_url is required when model.provider=deepseek")
+        if not exp.model.api_key_env:
+            raise ValueError("model.api_key_env is required when model.provider=deepseek")
     else:
-        raise ValueError(f"Invalid model.provider={exp.model.provider}. Use local/hf, remote/api, or vllm")
+        raise ValueError(f"Invalid model.provider={exp.model.provider}. Use local/hf, remote/api, vllm, or deepseek")
 
     exp.model.batch_size = max(1, int(exp.model.batch_size))
     exp.model.max_retries = max(1, int(exp.model.max_retries))

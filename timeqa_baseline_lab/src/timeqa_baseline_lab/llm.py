@@ -240,6 +240,97 @@ class VLLMGenerator(BaseGenerator):
         raise RuntimeError(f"VLLM generation failed after {self.max_retries} retries: {last_err}")
 
 
+class DeepSeekGenerator(BaseGenerator):
+    """Generator for DeepSeek API
+
+    Specialized generator for calling DeepSeek API with automatic retry mechanism.
+    Uses requests library for HTTP calls instead of OpenAI SDK.
+    """
+
+    def __init__(
+        self,
+        model: str = "deepseek-chat",
+        base_url: str = "https://api.deepseek.com/chat/completions",
+        api_key_env: str = "DEEPSEEK_API_KEY",
+        max_new_tokens: int = 256,
+        temperature: float = 0.0,
+        max_retries: int = 3,
+        timeout: int = 180,
+    ):
+        self.model = model
+        self.base_url = base_url
+        self.max_new_tokens = max_new_tokens
+        self.temperature = temperature
+        self.max_retries = max(1, int(max_retries))
+        self.timeout = max(1, int(timeout))
+
+        # Get API key from environment variable
+        api_key = os.getenv(api_key_env, "").strip()
+        if not api_key:
+            raise ValueError(f"Missing DeepSeek API key: set env var {api_key_env}")
+
+        # Setup HTTP session
+        self.session = requests.Session()
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def _build_messages(self, prompt: str, system_prompt: Optional[str]) -> List[dict]:
+        """Build message list for API request"""
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        return messages
+
+    def _payload(self, prompt: str, system_prompt: Optional[str]) -> dict:
+        """Build request payload for DeepSeek API"""
+        messages = self._build_messages(prompt, system_prompt)
+        return {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_new_tokens,
+        }
+
+    def generate(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """Generate response from DeepSeek API with retry mechanism"""
+        payload = self._payload(prompt, system_prompt)
+        last_err = None
+
+        for i in range(self.max_retries):
+            try:
+                resp = self.session.post(
+                    self.base_url,
+                    headers=self.headers,
+                    json=payload,
+                    timeout=self.timeout,
+                )
+
+                # Check HTTP status
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:500]}")
+
+                # Parse response
+                data = resp.json()
+                choices = data.get("choices", [])
+                if not choices:
+                    raise RuntimeError(f"No choices in response: {data}")
+
+                # Extract content
+                content = choices[0].get("message", {}).get("content", "")
+                return str(content).strip()
+
+            except Exception as e:
+                last_err = e
+                if i < self.max_retries - 1:
+                    time.sleep(1.5 * (i + 1))
+                continue
+
+        raise RuntimeError(f"DeepSeek API generation failed after {self.max_retries} retries: {last_err}")
+
+
 def build_generator(cfg: ModelConfig) -> BaseGenerator:
     provider = (cfg.provider or "local").lower()
     if provider in {"hf", "local"}:
@@ -269,4 +360,14 @@ def build_generator(cfg: ModelConfig) -> BaseGenerator:
             max_retries=cfg.max_retries,
             timeout=cfg.timeout,
         )
-    raise ValueError(f"Unsupported model.provider: {cfg.provider}. Use local/hf, remote/api, or vllm")
+    if provider == "deepseek":
+        return DeepSeekGenerator(
+            model=cfg.model,
+            base_url=cfg.base_url,
+            api_key_env=cfg.api_key_env,
+            max_new_tokens=cfg.max_new_tokens,
+            temperature=cfg.temperature,
+            max_retries=cfg.max_retries,
+            timeout=cfg.timeout,
+        )
+    raise ValueError(f"Unsupported model.provider: {cfg.provider}. Use local/hf, remote/api, vllm, or deepseek")

@@ -1,4 +1,7 @@
-﻿# Core paths
+# Example configuration for using DeepSeek API
+# This demonstrates how to use the deepseek provider
+
+# Core paths
 data:
   # New unified format (recommended)
   unified_data_path: "/workspace/ETE-Graph/dataset/timeqa/test_ffinal.json"
@@ -8,31 +11,14 @@ data:
   corpus_path: ""
   question_arrow_path: ""
 
-# Model config (local / remote / vllm / deepseek, choose one by provider)
+# Model config - DeepSeek API
 model:
-  provider: "vllm"        # local / remote / vllm / deepseek
+  provider: "deepseek"           # Use deepseek provider for DeepSeek API
 
-  # ----- local provider (HuggingFace transformers) -----
-  # model_name: "Qwen/Qwen3-4B-Instruct-2507"
-  # device: "auto"           # auto / cpu / cuda
-  # torch_dtype: "auto"      # auto / float16 / bfloat16 / float32
-
-  # ----- vllm provider (local VLLM service) -----
-  model_name: "qwen3-32b"
-  base_url: "http://localhost:8000/v1"
-
-  # ----- remote provider (OpenAI-compatible Chat Completions) -----
-  model: "deepseek-chat"
-  # base_url: "https://api.deepseek.com/chat/completions"
-  api_key_env: "DEEPSEEK_API_KEY"
-
-  # ----- deepseek provider (DeepSeek API) -----
-  # provider: "deepseek"
-  # model: "deepseek-chat"
-  # base_url: "https://api.deepseek.com/chat/completions"
-  # api_key_env: "DEEPSEEK_API_KEY"
-  # Note: Set environment variable DEEPSEEK_API_KEY before running
-  # Example: export DEEPSEEK_API_KEY="your-api-key-here"
+  # ----- deepseek provider settings -----
+  model: "deepseek-chat"         # DeepSeek model name
+  base_url: "https://api.deepseek.com/chat/completions"  # DeepSeek API endpoint
+  api_key_env: "DEEPSEEK_API_KEY"  # Environment variable for API key
 
   # common generation config
   max_new_tokens: 4096
@@ -80,4 +66,4 @@ run:
 io:
   cache_dir: "./cache"
   output_dir: "./outputs"
-  run_name: "timeqa_baseline"
+  run_name: "timeqa_baseline_deepseek"
