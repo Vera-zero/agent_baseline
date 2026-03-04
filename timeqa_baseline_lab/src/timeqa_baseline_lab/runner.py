@@ -19,9 +19,9 @@ from .strategies import rag_cot, react, zero_shot_cot
 def build_retriever(cfg: ExperimentConfig, docs):
     """Build and initialize retriever."""
     # Create chunker and chunk documents
-    # Use a default tokenizer (can be made configurable later)
+    # Use local contriever tokenizer
     chunker = TokenChunker(
-        tokenizer_name="facebook/contriever",  # Default tokenizer
+        tokenizer_name="/workspace/models/contriever",  # Use local contriever tokenizer
         chunk_size=cfg.chunk.chunk_size,
         chunk_overlap=cfg.chunk.chunk_overlap,
         min_chunk_size=cfg.chunk.min_chunk_size,
@@ -45,7 +45,7 @@ def build_retriever(cfg: ExperimentConfig, docs):
     else:
         raise ValueError(f"Unknown retriever type: {retriever_type}")
 
-    retriever.build_index(chunks, cache_dir=cache_dir)
+    retriever.build_or_load_index(chunks, cache_dir=cache_dir)
     return retriever
 
 
@@ -172,7 +172,20 @@ def run_experiment(cfg: ExperimentConfig) -> Dict[str, Any]:
         print(f"   Retriever: {cfg.retriever.type} with {len(retriever.chunks)} chunks")
 
     # Setup output path
-    output_dir = Path(cfg.io.output_dir)
+    # Extract dataset name from data path
+    dataset_name = "unknown"
+    if cfg.data.unified_data_path:
+        # Extract dataset name from path like "/workspace/ETE-Graph/dataset/timeqa/test_ffinal.json"
+        dataset_path = Path(cfg.data.unified_data_path)
+        dataset_name = dataset_path.parent.name  # Gets "timeqa" from the parent directory
+    elif cfg.data.corpus_path:
+        # For legacy format
+        corpus_path = Path(cfg.data.corpus_path)
+        dataset_name = corpus_path.parent.name
+
+    # Build output path: /workspace/ETE-Graph/QAresult/{数据集名}/{方法名}
+    output_base = Path("/workspace/ETE-Graph/QAresult")
+    output_dir = output_base / dataset_name / cfg.run.strategy
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Use strategy name and timestamp in output filename
